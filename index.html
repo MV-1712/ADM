@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Baby Shower 💖</title>
+
+<style>
+body {
+  font-family: 'Segoe UI';
+  background: #fff5f7;
+  margin: 0;
+  padding: 20px;
+}
+
+.container {
+  max-width: 700px;
+  margin: auto;
+}
+
+h1 {
+  text-align: center;
+  color: #ff6b81;
+}
+
+.mensaje {
+  background: white;
+  padding: 20px;
+  border-radius: 15px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+input {
+  width: 100%;
+  padding: 10px;
+  margin: 10px 0;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+}
+
+.card {
+  background: white;
+  padding: 15px;
+  margin: 10px 0;
+  border-radius: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+button {
+  background: #ff6b81;
+  border: none;
+  padding: 8px 12px;
+  color: white;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+button:disabled {
+  background: gray;
+}
+
+.resumen {
+  margin-top: 30px;
+  background: white;
+  padding: 15px;
+  border-radius: 15px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>💖 Baby Shower 💖</h1>
+
+<div class="mensaje">
+<p>
+Nos llena de alegría invitarte 💕<br><br>
+Tu compañía es nuestro mejor regalo, pero si deseas tener un detalle,
+puedes elegir una opción de la lista 🎁
+</p>
+</div>
+
+<input type="text" id="nombre" placeholder="Tu nombre">
+
+<div id="contenido"></div>
+
+<h3>🔐 Ver resumen</h3>
+<input type="password" id="clave" placeholder="Clave">
+<button onclick="verResumen()">Ver</button>
+
+<div id="resumen" class="resumen"></div>
+
+<p style="text-align:center; margin-top:30px;">
+📍 <a href="https://maps.google.com/?q=TU_UBICACION" target="_blank">Ver ubicación</a><br>
+🕒 15:00
+</p>
+
+</div>
+
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycbwJfvProeD5AX5uJQJdWnMTRrXnv06ZKBCx_Qc8bz4i2b_x7wTxpA7aVskv8uMkzeI/exec";
+const CLAVE = "bebe2026";
+
+async function cargar() {
+  try {
+    const res = await fetch(API_URL + "?t=" + Date.now());
+
+    if (!res.ok) throw new Error("Error HTTP");
+
+    const data = await res.json();
+
+    const cont = document.getElementById("contenido");
+    cont.innerHTML = "";
+
+    if (!data || data.length === 0) {
+      cont.innerHTML = "<p>No hay datos 😅</p>";
+      return;
+    }
+
+    const categorias = {};
+
+    data.forEach(item => {
+      if (!categorias[item.categoria]) {
+        categorias[item.categoria] = [];
+      }
+      categorias[item.categoria].push(item);
+    });
+
+    for (let cat in categorias) {
+      let divCat = document.createElement("div");
+      divCat.innerHTML = `<h3>${cat}</h3>`;
+
+      categorias[cat].forEach(item => {
+        const disponible = item.limite - item.reservados;
+
+        let card = document.createElement("div");
+        card.className = "card";
+
+        card.innerHTML = `
+          <div>
+            <b>${item.subcategoria}</b><br>
+            <small>${disponible > 0 ? "Quedan: " + disponible : "AGOTADO"}</small>
+          </div>
+          <button ${disponible <= 0 ? "disabled" : ""}
+          onclick="reservar('${item.subcategoria}')">
+          Elegir
+          </button>
+        `;
+
+        divCat.appendChild(card);
+      });
+
+      cont.appendChild(divCat);
+    }
+
+  } catch (error) {
+    console.error(error);
+    document.getElementById("contenido").innerHTML =
+      "❌ Error conectando con el servidor";
+  }
+}
+
+async function reservar(sub) {
+  const nombre = document.getElementById("nombre").value.trim();
+
+  if (!nombre) {
+    alert("Pon tu nombre 😅");
+    return;
+  }
+
+  try {
+    await fetch(API_URL, {
+      method: "POST",
+      body: JSON.stringify({
+        nombre: nombre,
+        subcategoria: sub
+      })
+    });
+
+    alert("🎁 Gracias por tu regalo 💕");
+    cargar();
+
+  } catch (error) {
+    alert("Error enviando 😢");
+  }
+}
+
+async function verResumen() {
+  const clave = document.getElementById("clave").value;
+
+  if (clave !== CLAVE) {
+    alert("Clave incorrecta 😈");
+    return;
+  }
+
+  try {
+    const res = await fetch(API_URL + "?t=" + Date.now());
+    const data = await res.json();
+
+    let html = "<h3>Resumen</h3>";
+
+    data.forEach(item => {
+      if (item.personas) {
+        html += `<p><b>${item.subcategoria}:</b> ${item.personas}</p>`;
+      }
+    });
+
+    document.getElementById("resumen").innerHTML = html;
+
+  } catch {
+    alert("Error cargando resumen");
+  }
+}
+
+cargar();
+</script>
+
+</body>
+</html>
