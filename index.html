@@ -53,7 +53,7 @@ img{
 
 <br><br>
 
-<button onclick="guardarProducto()">Guardar producto</button>
+<button id="btnGuardar">Guardar producto</button>
 
 <hr>
 
@@ -81,7 +81,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 
 
-// 🔥 CONFIG REAL
+// 🔥 CONFIG
 const firebaseConfig = {
   apiKey: "AIzaSyCnaRoFl94aKW-hjVf_cscrJEjm18URG3g",
   authDomain: "visionary-53354.firebaseapp.com",
@@ -96,8 +96,8 @@ const db = getFirestore(app);
 const storage = getStorage(app);
 
 
-// 🔥 GUARDAR PRODUCTO
-window.guardarProducto = async function(){
+// 🔥 GUARDAR PRODUCTO (SIN window, limpio)
+async function guardarProducto(){
 
   try{
 
@@ -119,6 +119,7 @@ window.guardarProducto = async function(){
 
     let urls = [];
 
+    // 🔥 subir imágenes
     for(let i=0; i<files.length; i++){
       const file = files[i];
 
@@ -130,6 +131,7 @@ window.guardarProducto = async function(){
       urls.push(url);
     }
 
+    // 🔥 guardar en Firestore
     await addDoc(collection(db, "productos"), {
       Nombre: nombre.value,
       Precio: precio.value,
@@ -161,7 +163,7 @@ window.guardarProducto = async function(){
     alert("Error: " + e.message);
   }
 
-};
+}
 
 
 // 🔥 CARGAR PRODUCTOS
@@ -181,19 +183,25 @@ async function cargarProductos(){
         <img src="${p.Imagen}">
         <b>${p.Nombre}</b><br>
         $${p.Precio}<br>
-        <button onclick="eliminar('${docu.id}')">Eliminar</button>
+        <button data-id="${docu.id}" class="btnEliminar">Eliminar</button>
       </div>
     `;
+  });
+
+  // 🔥 eventos eliminar (forma correcta en módulos)
+  document.querySelectorAll(".btnEliminar").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const id = btn.getAttribute("data-id");
+      await deleteDoc(doc(db, "productos", id));
+      cargarProductos();
+    });
   });
 
 }
 
 
-// 🔥 ELIMINAR
-window.eliminar = async function(id){
-  await deleteDoc(doc(db, "productos", id));
-  cargarProductos();
-};
+// 🔥 EVENTO BOTÓN
+document.getElementById("btnGuardar").addEventListener("click", guardarProducto);
 
 
 // 🔥 INIT
