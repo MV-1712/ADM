@@ -1,4 +1,3 @@
-```html
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -50,7 +49,7 @@ img{
 <input id="subcategoria" placeholder="Subcategoría">
 <textarea id="descripcion" placeholder="Descripción"></textarea>
 
-<input type="file" id="imagenFile">
+<input type="file" id="imagenesFiles" multiple>
 
 <br><br>
 
@@ -62,69 +61,119 @@ img{
 <div id="lista"></div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+
+import { 
+  getFirestore, 
+  collection, 
+  addDoc, 
+  getDocs, 
+  deleteDoc, 
+  doc 
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+import { 
+  getStorage, 
+  ref, 
+  uploadBytes, 
+  getDownloadURL 
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
+
+
+// 🔥 CONFIG REAL
 const firebaseConfig = {
-  apiKey: "TU_API_KEY",
-  authDomain: "TU_DOMINIO",
-  projectId: "TU_PROJECT_ID",
-  storageBucket: "TU_BUCKET"
+  apiKey: "AIzaSyCnaRoFl94aKW-hjVf_cscrJEjm18URG3g",
+  authDomain: "visionary-53354.firebaseapp.com",
+  projectId: "visionary-53354",
+  storageBucket: "visionary-53354.firebasestorage.app",
+  messagingSenderId: "123477697424",
+  appId: "1:123477697424:web:a2bd7b24ede2fbc1e20915"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const storage = getStorage(app);
 
+
+// 🔥 GUARDAR PRODUCTO
 window.guardarProducto = async function(){
 
-  const files = document.getElementById("imagenesFiles").files;
+  try{
 
-  if(files.length === 0){
-    alert("Sube al menos una imagen");
-    return;
+    console.log("CLICK FUNCIONA");
+
+    const nombre = document.getElementById("nombre");
+    const precio = document.getElementById("precio");
+    const precioAnterior = document.getElementById("precioAnterior");
+    const categoria = document.getElementById("categoria");
+    const subcategoria = document.getElementById("subcategoria");
+    const descripcion = document.getElementById("descripcion");
+
+    const files = document.getElementById("imagenesFiles").files;
+
+    if(files.length === 0){
+      alert("Sube al menos una imagen");
+      return;
+    }
+
+    let urls = [];
+
+    for(let i=0; i<files.length; i++){
+      const file = files[i];
+
+      const storageRef = ref(storage, "productos/" + Date.now() + "_" + file.name);
+
+      await uploadBytes(storageRef, file);
+
+      const url = await getDownloadURL(storageRef);
+      urls.push(url);
+    }
+
+    await addDoc(collection(db, "productos"), {
+      Nombre: nombre.value,
+      Precio: precio.value,
+      PrecioAnterior: precioAnterior.value,
+      Categoria: categoria.value,
+      Subcategoria: subcategoria.value,
+      Descripcion: descripcion.value,
+      Imagen: urls[0] || "",
+      Imagen2: urls[1] || "",
+      Imagen3: urls[2] || "",
+      Imagen4: urls[3] || ""
+    });
+
+    alert("Producto guardado 🔥");
+
+    // limpiar
+    nombre.value = "";
+    precio.value = "";
+    precioAnterior.value = "";
+    categoria.value = "";
+    subcategoria.value = "";
+    descripcion.value = "";
+    document.getElementById("imagenesFiles").value = "";
+
+    cargarProductos();
+
+  }catch(e){
+    console.error("ERROR:", e);
+    alert("Error: " + e.message);
   }
 
-  let urls = [];
-
-  // 🔥 subir todas las imágenes
-  for(let i=0; i<files.length; i++){
-    const file = files[i];
-
-    const storageRef = ref(storage, "productos/" + Date.now() + "_" + file.name);
-    await uploadBytes(storageRef, file);
-
-    const url = await getDownloadURL(storageRef);
-    urls.push(url);
-  }
-
-  // 🔥 guardar producto
-  await addDoc(collection(db, "productos"), {
-    Nombre: nombre.value,
-    Precio: precio.value,
-    PrecioAnterior: precioAnterior.value,
-    Categoria: categoria.value,
-    Subcategoria: subcategoria.value,
-    Descripcion: descripcion.value,
-
-    Imagen: urls[0] || "",
-    Imagen2: urls[1] || "",
-    Imagen3: urls[2] || "",
-    Imagen4: urls[3] || ""
-  });
-
-  alert("Producto guardado 🔥");
-  cargarProductos();
 };
 
+
+// 🔥 CARGAR PRODUCTOS
 async function cargarProductos(){
+
   const cont = document.getElementById("lista");
   cont.innerHTML = "";
 
   const snap = await getDocs(collection(db, "productos"));
 
   snap.forEach(docu => {
+
     const p = docu.data();
 
     cont.innerHTML += `
@@ -136,17 +185,21 @@ async function cargarProductos(){
       </div>
     `;
   });
+
 }
 
+
+// 🔥 ELIMINAR
 window.eliminar = async function(id){
   await deleteDoc(doc(db, "productos", id));
   cargarProductos();
 };
 
+
+// 🔥 INIT
 cargarProductos();
 
 </script>
 
 </body>
 </html>
-```
