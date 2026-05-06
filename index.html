@@ -8,6 +8,7 @@
 body{
   font-family:Arial;
   background:#f4f4f4;
+  margin:0;
   padding:20px;
 }
 
@@ -17,12 +18,16 @@ body{
   background:white;
   padding:20px;
   border-radius:10px;
+  width:95%;
+  box-shadow:0 4px 15px rgba(0,0,0,0.1);
 }
 
 input, textarea{
   width:100%;
   padding:10px;
   margin:5px 0;
+  font-size:16px;
+  box-sizing:border-box;
 }
 
 button{
@@ -33,12 +38,46 @@ button{
   border:none;
   cursor:pointer;
   margin-top:10px;
+  font-size:16px;
+}
+
+img{
+  max-width:100%;
+}
+
+h2,h3{
+  text-align:center;
+}
+
+/* MODAL */
+#modal{
+  display:none;
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  background:rgba(0,0,0,0.6);
+  justify-content:center;
+  align-items:flex-start;
+  overflow-y:auto;
+  padding:20px 0;
+}
+
+.modal-content{
+  background:white;
+  padding:20px;
+  width:90%;
+  max-width:500px;
+  border-radius:10px;
+  margin:auto;
 }
 </style>
 </head>
+
 <body>
 
-<!-- 🟢 PÁGINA CREAR -->
+<!-- 🟢 CREAR -->
 <div class="container" id="pageCreate">
 
 <h2>Panel Admin VISIONARY 🔥</h2>
@@ -52,49 +91,39 @@ button{
 <input id="subcategoria" placeholder="Subcategoría">
 <textarea id="descripcion" placeholder="Descripción"></textarea>
 
-<input type="file" id="imagen" multiple>
+<h3>🖼 Imágenes</h3>
 
-<button onclick="guardar()">Guardar producto</button>
+<label>Foto 1</label>
+<input type="file" id="c_img1">
+
+<label>Foto 2</label>
+<input type="file" id="c_img2">
+
+<label>Foto 3</label>
+<input type="file" id="c_img3">
+
+<label>Foto 4</label>
+<input type="file" id="c_img4">
 
 <h3>Variantes</h3>
-
 <input id="color" placeholder="Color">
 <input id="talla" placeholder="Talla">
 <input id="stock" placeholder="Stock">
 
+<button onclick="guardar()">Guardar producto</button>
+
 </div>
 
-<!-- 🔵 PÁGINA EDITAR -->
+<!-- 🔵 LISTA -->
 <div class="container" id="pageEdit" style="display:none;">
-
-<h2>📦 Editar productos</h2>
-
+<h2>📦 Productos</h2>
 <button onclick="volver()">⬅ Volver</button>
-
 <div id="lista2"></div>
-
-
 </div>
-<!-- 🧠 MODAL EDITAR -->
-<div id="modal" style="
-  display:none;
-  position:fixed;
-  top:0;
-  left:0;
-  width:100%;
-  height:100%;
-  background:rgba(0,0,0,0.6);
-  justify-content:center;
-  align-items:center;
-">
 
-  <div style="
-    background:white;
-    padding:20px;
-    width:90%;
-    max-width:500px;
-    border-radius:10px;
-  ">
+<!-- 🧠 MODAL EDITAR -->
+<div id="modal">
+  <div class="modal-content">
 
     <h2>✏️ Editar producto</h2>
 
@@ -105,16 +134,25 @@ button{
     <input id="e_subcategoria" placeholder="Subcategoría">
     <textarea id="e_descripcion" placeholder="Descripción"></textarea>
 
-    <input type="file" id="e_imagen" multiple>
+    <h3>Imágenes actuales</h3>
+    <img id="prev1">
+    <img id="prev2">
+    <img id="prev3">
+    <img id="prev4">
+
+    <h3>Nuevas imágenes</h3>
+
+    <input type="file" id="e_img1">
+    <input type="file" id="e_img2">
+    <input type="file" id="e_img3">
+    <input type="file" id="e_img4">
 
     <button onclick="actualizar()">💾 Guardar cambios</button>
     <button onclick="cerrarModal()">❌ Cerrar</button>
 
   </div>
-
 </div>
 
-</body>
 <script>
 
 const URL_SCRIPT = "https://script.google.com/macros/s/AKfycbwQ_rX8KwOB09BL0IWfmqh-_JzIHErI8ce4zBcSZS0AfskdRAeFkKgm5KgR8MwlblgUcA/exec";
@@ -123,165 +161,78 @@ const CLOUD_NAME = "dfbryzre9";
 const UPLOAD_PRESET = "visionary_upload";
 
 // ===============================
-// 🚀 GUARDAR PRODUCTO + VARIANTES
+// ☁️ SUBIR A CLOUDINARY
+// ===============================
+async function uploadImage(file){
+  if(!file) return "";
+
+  const form = new FormData();
+  form.append("file", file);
+  form.append("upload_preset", UPLOAD_PRESET);
+
+  const res = await fetch(
+    `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
+    { method: "POST", body: form }
+  );
+
+  const data = await res.json();
+
+  console.log("Cloudinary response:", data); // 👈 DEBUG CLAVE
+
+  if(!data.secure_url){
+    alert("❌ Error subiendo imagen a Cloudinary");
+    return "";
+  }
+
+  return data.secure_url;
+}
+
+// ===============================
+// 🚀 GUARDAR PRODUCTO
 // ===============================
 async function guardar(){
 
-  try{
+  const nombre = document.getElementById("nombre").value;
+  const precio = document.getElementById("precio").value;
+  const precioAnterior = document.getElementById("precioAnterior").value;
+  const categoria = document.getElementById("categoria").value;
+  const subcategoria = document.getElementById("subcategoria").value;
+  const descripcion = document.getElementById("descripcion").value;
 
-    const nombre = document.getElementById("nombre").value;
-    const precio = document.getElementById("precio").value;
-    const precioAnterior = document.getElementById("precioAnterior").value;
-    const categoria = document.getElementById("categoria").value;
-    const subcategoria = document.getElementById("subcategoria").value;
-    const descripcion = document.getElementById("descripcion").value;
+  const img1 = await uploadImage(document.getElementById("c_img1").files[0]);
+  const img2 = await uploadImage(document.getElementById("c_img2").files[0]);
+  const img3 = await uploadImage(document.getElementById("c_img3").files[0]);
+  const img4 = await uploadImage(document.getElementById("c_img4").files[0]);
 
-    const files = document.getElementById("imagen").files;
+  const form = new FormData();
 
-    if(files.length === 0){
-      alert("Sube al menos una imagen");
-      return;
-    }
+  form.append("action", "create");
+  form.append("Nombre", nombre);
+  form.append("Precio", precio);
+  form.append("PrecioAnterior", precioAnterior);
+  form.append("Categoria", categoria);
+  form.append("Subcategoria", subcategoria);
+  form.append("Descripcion", descripcion);
 
-    const urls = [];
+  // 🔥 IMÁGENES YA EN URL (Cloudinary)
+  form.append("Imagen", img1);
+  form.append("Imagen2", img2);
+  form.append("Imagen3", img3);
+  form.append("Imagen4", img4);
 
-    for(let i = 0; i < files.length; i++){
+  await fetch(URL_SCRIPT, {
+    method: "POST",
+    body: form
+  });
 
-      const formDataImg = new FormData();
-      formDataImg.append("file", files[i]);
-      formDataImg.append("upload_preset", UPLOAD_PRESET);
-
-      const resCloud = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,{
-        method:"POST",
-        body:formDataImg
-      });
-
-      const dataCloud = await resCloud.json();
-
-      if(dataCloud.secure_url){
-        urls.push(dataCloud.secure_url);
-      }
-    }
-
-    const imagen = urls[0] || "";
-    const imagen2 = urls[1] || "";
-    const imagen3 = urls[2] || "";
-    const imagen4 = urls[3] || "";
-
-    const variantes = [];
-
-    const color = document.getElementById("color").value;
-    const talla = document.getElementById("talla").value;
-    const stock = document.getElementById("stock").value;
-
-    if(color || talla || stock){
-      variantes.push({
-        Color: color,
-        Talla: talla,
-        Stock: stock
-      });
-    }
-
-    const formData = new FormData();
-
-    formData.append("action", "create");
-    formData.append("Nombre", nombre);
-    formData.append("Precio", precio);
-    formData.append("PrecioAnterior", precioAnterior);
-    formData.append("Categoria", categoria);
-    formData.append("Subcategoria", subcategoria);
-    formData.append("Descripcion", descripcion);
-
-    formData.append("Imagen", imagen);
-    formData.append("Imagen2", imagen2);
-    formData.append("Imagen3", imagen3);
-    formData.append("Imagen4", imagen4);
-
-    formData.append("Variantes", JSON.stringify(variantes));
-
-    const res = await fetch(URL_SCRIPT,{
-      method:"POST",
-      body: formData
-    });
-
-    const text = await res.text();
-
-    console.log(text);
-
-    alert("✅ Producto guardado correctamente");
-    limpiar();
-
-  }catch(err){
-    console.error(err);
-    alert("❌ Error general");
-  }
-}
-// ===============================
-// 🧹 LIMPIAR
-// ===============================
-function limpiar(){
-  document.getElementById("nombre").value="";
-  document.getElementById("precio").value="";
-  document.getElementById("precioAnterior").value="";
-  document.getElementById("categoria").value="";
-  document.getElementById("subcategoria").value="";
-  document.getElementById("descripcion").value="";
-  document.getElementById("imagen").value="";
-
-  document.getElementById("color").value="";
-  document.getElementById("talla").value="";
-  document.getElementById("stock").value="";
+  alert("✅ Guardado correctamente");
+  limpiar();
 }
 
 // ===============================
-// ➕ GUARDAR SOLO VARIANTE
-// ===============================
-async function guardarVariante(){
-
-  const productoID = document.getElementById("productoID").value;
-
-  if(!productoID){
-    alert("Pon el ID del producto");
-    return;
-  }
-
-  try{
-
-    const color = document.getElementById("color").value;
-    const talla = document.getElementById("talla").value;
-    const stock = document.getElementById("stock").value;
-
-    const form = new FormData();
-
-    form.append("tipo", "variante");
-   
-    form.append("Color", color);
-    form.append("Talla", talla);
-    form.append("Stock", stock);
-
-    const res = await fetch(URL_SCRIPT,{
-      method:"POST",
-      body:form
-    });
-
-    const text = await res.text();
-
-    console.log("Variante:", text);
-
-    alert("✅ Variante guardada");
-
-  }catch(err){
-    console.error(err);
-    alert("❌ Error variante");
-  }
-}
-const API = URL_SCRIPT;
-
-// ===============================
-// 📥 CARGAR PRODUCTOS
+// 📦 LISTAR PRODUCTOS
 // ===============================
 function cargarProductos(){
-
   fetch(URL_SCRIPT)
   .then(r => r.json())
   .then(data => {
@@ -292,13 +243,21 @@ function cargarProductos(){
 
       html += `
         <div style="border:1px solid #ccc; padding:10px; margin:10px;">
-          <b>${p.ID}</b><br>
-          ${p.Nombre}<br>
+          
+          <b>${p.Nombre}</b><br>
           💰 ${p.Precio}<br>
 
-          <img src="${p.Imagen}" width="80"><br>
+          <div style="display:flex; gap:5px; margin-top:5px;">
+            <img src="${p.Imagen || ''}" width="60">
+            <img src="${p.Imagen2 || ''}" width="60">
+            <img src="${p.Imagen3 || ''}" width="60">
+            <img src="${p.Imagen4 || ''}" width="60">
+          </div>
 
-          <button onclick='abrirModal(${JSON.stringify(p)})'>Editar</button>
+          <button onclick='abrirModal(${JSON.stringify(p)})'>
+            Editar
+          </button>
+
         </div>
       `;
     });
@@ -307,9 +266,14 @@ function cargarProductos(){
   });
 }
 
+// ===============================
+// ✏️ MODAL
+// ===============================
+let editingID = null;
+
 function abrirModal(p){
 
-  window.editingID = p.ID;
+  editingID = p.ID;
 
   document.getElementById("e_nombre").value = p.Nombre || "";
   document.getElementById("e_precio").value = p.Precio || "";
@@ -318,72 +282,38 @@ function abrirModal(p){
   document.getElementById("e_subcategoria").value = p.Subcategoria || "";
   document.getElementById("e_descripcion").value = p.Descripcion || "";
 
-  window.oldImages = {
-    Imagen: p.Imagen || "",
-    Imagen2: p.Imagen2 || "",
-    Imagen3: p.Imagen3 || "",
-    Imagen4: p.Imagen4 || ""
-  };
+  document.getElementById("prev1").src = p.Imagen || "";
+  document.getElementById("prev2").src = p.Imagen2 || "";
+  document.getElementById("prev3").src = p.Imagen3 || "";
+  document.getElementById("prev4").src = p.Imagen4 || "";
 
   document.getElementById("modal").style.display = "flex";
-}
-// ===============================
-// ✏️ EDITAR
-// ===============================
-function editar(p){
-
-  document.getElementById("e_nombre").value = p.Nombre;
-  document.getElementById("e_precio").value = p.Precio;
-  document.getElementById("e_precioAnterior").value = p.PrecioAnterior;
-  document.getElementById("e_categoria").value = p.Categoria;
-  document.getElementById("e_subcategoria").value = p.Subcategoria;
-  document.getElementById("e_descripcion").value = p.Descripcion;
-
-  window.editingID = p.ID;
-
   window.oldImages = {
-    Imagen: p.Imagen,
-    Imagen2: p.Imagen2,
-    Imagen3: p.Imagen3,
-    Imagen4: p.Imagen4
-  };
-
-  document.getElementById("modal").style.display = "flex";
+  Imagen: p.Imagen || "",
+  Imagen2: p.Imagen2 || "",
+  Imagen3: p.Imagen3 || "",
+  Imagen4: p.Imagen4 || ""
+};
 }
+
 function cerrarModal(){
   document.getElementById("modal").style.display = "none";
 }
 
 // ===============================
-// 💾 GUARDAR UPDATE
+// 💾 ACTUALIZAR PRODUCTO
 // ===============================
 async function actualizar(){
 
-  const files = document.getElementById("e_imagen").files;
-  let urls = [];
-
-  if(files.length > 0){
-
-    for(let i = 0; i < files.length; i++){
-
-      const formDataImg = new FormData();
-      formDataImg.append("file", files[i]);
-      formDataImg.append("upload_preset", UPLOAD_PRESET);
-
-      const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,{
-        method:"POST",
-        body:formDataImg
-      });
-
-      const data = await res.json();
-      if(data.secure_url) urls.push(data.secure_url);
-    }
-  }
+  const img1 = await uploadImage(document.getElementById("e_img1").files[0]);
+  const img2 = await uploadImage(document.getElementById("e_img2").files[0]);
+  const img3 = await uploadImage(document.getElementById("e_img3").files[0]);
+  const img4 = await uploadImage(document.getElementById("e_img4").files[0]);
 
   const form = new FormData();
 
   form.append("action", "update");
-  form.append("ID", window.editingID);
+  form.append("ID", editingID);
 
   form.append("Nombre", document.getElementById("e_nombre").value);
   form.append("Precio", document.getElementById("e_precio").value);
@@ -392,19 +322,37 @@ async function actualizar(){
   form.append("Subcategoria", document.getElementById("e_subcategoria").value);
   form.append("Descripcion", document.getElementById("e_descripcion").value);
 
-  form.append("Imagen", urls[0] || window.oldImages.Imagen);
-  form.append("Imagen2", urls[1] || window.oldImages.Imagen2);
-  form.append("Imagen3", urls[2] || window.oldImages.Imagen3);
-  form.append("Imagen4", urls[3] || window.oldImages.Imagen4);
+  // 🔥 CLAVE: si no sube nueva imagen, usa la anterior
+  form.append("Imagen", img1 || window.oldImages.Imagen);
+  form.append("Imagen2", img2 || window.oldImages.Imagen2);
+  form.append("Imagen3", img3 || window.oldImages.Imagen3);
+  form.append("Imagen4", img4 || window.oldImages.Imagen4);
 
-  await fetch(URL_SCRIPT, { method:"POST", body: form });
+  await fetch(URL_SCRIPT, {
+    method: "POST",
+    body: form
+  });
 
   alert("✅ Actualizado");
-
   cerrarModal();
   cargarProductos();
 }
 
+// ===============================
+// 🧹 LIMPIAR
+// ===============================
+function limpiar(){
+  document.getElementById("nombre").value = "";
+  document.getElementById("precio").value = "";
+  document.getElementById("precioAnterior").value = "";
+  document.getElementById("categoria").value = "";
+  document.getElementById("subcategoria").value = "";
+  document.getElementById("descripcion").value = "";
+}
+
+// ===============================
+// UI
+// ===============================
 function mostrarLista(){
   document.getElementById("pageCreate").style.display = "none";
   document.getElementById("pageEdit").style.display = "block";
@@ -415,52 +363,7 @@ function volver(){
   document.getElementById("pageCreate").style.display = "block";
   document.getElementById("pageEdit").style.display = "none";
 }
-function goCreate(){
-  showPage("create");
-  history.pushState({page:"create"}, "", "#create");
-}
-
-function goList(){
-  showPage("list");
-  history.pushState({page:"list"}, "", "#list");
-}
-
-function goEdit(){
-  showPage("edit");
-  history.pushState({page:"edit"}, "", "#edit");
-}
-function showPage(page){
-
-  document.getElementById("pageCreate").style.display = "none";
-  document.getElementById("pageEdit").style.display = "none";
-  document.getElementById("modal").style.display = "none";
-
-  if(page === "create"){
-    document.getElementById("pageCreate").style.display = "block";
-  }
-
-  if(page === "list"){
-    document.getElementById("pageEdit").style.display = "block";
-    cargarProductos();
-  }
-
-  if(page === "edit"){
-    document.getElementById("modal").style.display = "flex";
-  }
-}
-window.onpopstate = function(event){
-
-  if(!event.state){
-    showPage("create");
-    return;
-  }
-
-  showPage(event.state.page);
-};
-
-
 
 </script>
-
 </body>
 </html>
