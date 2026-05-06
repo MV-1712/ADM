@@ -11,6 +11,14 @@ body{
   padding:20px;
 }
 
+.container{
+  max-width:600px;
+  margin:auto;
+  background:white;
+  padding:20px;
+  border-radius:10px;
+}
+
 input, textarea{
   width:100%;
   padding:10px;
@@ -18,29 +26,24 @@ input, textarea{
 }
 
 button{
-  padding:10px;
+  width:100%;
+  padding:12px;
   background:black;
   color:white;
   border:none;
   cursor:pointer;
-}
-
-.card{
-  background:white;
-  padding:10px;
-  margin:10px 0;
-  border-radius:8px;
-}
-
-img{
-  width:80px;
-  border-radius:6px;
+  margin-top:10px;
 }
 </style>
 </head>
 <body>
 
-<h2>Panel Admin 🔥</h2>
+<!-- 🟢 PÁGINA CREAR -->
+<div class="container" id="pageCreate">
+
+<h2>Panel Admin VISIONARY 🔥</h2>
+
+<button onclick="mostrarLista()">📦 Ver productos</button>
 
 <input id="nombre" placeholder="Nombre">
 <input id="precio" placeholder="Precio">
@@ -49,163 +52,413 @@ img{
 <input id="subcategoria" placeholder="Subcategoría">
 <textarea id="descripcion" placeholder="Descripción"></textarea>
 
-<input type="file" id="imagenesFiles" multiple>
+<input type="file" id="imagen" multiple>
 
-<br><br>
+<button onclick="guardar()">Guardar producto</button>
 
-<button id="btnGuardar">Guardar producto</button>
+<h3>Variantes</h3>
 
-<hr>
+<input id="color" placeholder="Color">
+<input id="talla" placeholder="Talla">
+<input id="stock" placeholder="Stock">
 
-<h3>Productos</h3>
-<div id="lista"></div>
+</div>
 
-<script type="module">
+<!-- 🔵 PÁGINA EDITAR -->
+<div class="container" id="pageEdit" style="display:none;">
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+<h2>📦 Editar productos</h2>
 
-import { 
-  getFirestore, 
-  collection, 
-  addDoc, 
-  getDocs, 
-  deleteDoc, 
-  doc 
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+<button onclick="volver()">⬅ Volver</button>
 
-import { 
-  getStorage, 
-  ref, 
-  uploadBytes, 
-  getDownloadURL 
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
+<div id="lista2"></div>
 
 
-// 🔥 CONFIG
-const firebaseConfig = {
-  apiKey: "AIzaSyCnaRoFl94aKW-hjVf_cscrJEjm18URG3g",
-  authDomain: "visionary-53354.firebaseapp.com",
-  projectId: "visionary-53354",
-  storageBucket: "visionary-53354.firebasestorage.app",
-  messagingSenderId: "123477697424",
-  appId: "1:123477697424:web:a2bd7b24ede2fbc1e20915"
-};
+</div>
+<!-- 🧠 MODAL EDITAR -->
+<div id="modal" style="
+  display:none;
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  background:rgba(0,0,0,0.6);
+  justify-content:center;
+  align-items:center;
+">
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const storage = getStorage(app);
+  <div style="
+    background:white;
+    padding:20px;
+    width:90%;
+    max-width:500px;
+    border-radius:10px;
+  ">
 
+    <h2>✏️ Editar producto</h2>
 
-// 🔥 GUARDAR PRODUCTO (SIN window, limpio)
-async function guardarProducto(){
+    <input id="e_nombre" placeholder="Nombre">
+    <input id="e_precio" placeholder="Precio">
+    <input id="e_precioAnterior" placeholder="Precio anterior">
+    <input id="e_categoria" placeholder="Categoría">
+    <input id="e_subcategoria" placeholder="Subcategoría">
+    <textarea id="e_descripcion" placeholder="Descripción"></textarea>
+
+    <input type="file" id="e_imagen" multiple>
+
+    <button onclick="actualizar()">💾 Guardar cambios</button>
+    <button onclick="cerrarModal()">❌ Cerrar</button>
+
+  </div>
+
+</div>
+
+</body>
+<script>
+
+const URL_SCRIPT = "https://script.google.com/macros/s/AKfycbwQ_rX8KwOB09BL0IWfmqh-_JzIHErI8ce4zBcSZS0AfskdRAeFkKgm5KgR8MwlblgUcA/exec";
+
+const CLOUD_NAME = "dfbryzre9";
+const UPLOAD_PRESET = "visionary_upload";
+
+// ===============================
+// 🚀 GUARDAR PRODUCTO + VARIANTES
+// ===============================
+async function guardar(){
 
   try{
 
-    console.log("CLICK FUNCIONA");
+    const nombre = document.getElementById("nombre").value;
+    const precio = document.getElementById("precio").value;
+    const precioAnterior = document.getElementById("precioAnterior").value;
+    const categoria = document.getElementById("categoria").value;
+    const subcategoria = document.getElementById("subcategoria").value;
+    const descripcion = document.getElementById("descripcion").value;
 
-    const nombre = document.getElementById("nombre");
-    const precio = document.getElementById("precio");
-    const precioAnterior = document.getElementById("precioAnterior");
-    const categoria = document.getElementById("categoria");
-    const subcategoria = document.getElementById("subcategoria");
-    const descripcion = document.getElementById("descripcion");
-
-    const files = document.getElementById("imagenesFiles").files;
+    const files = document.getElementById("imagen").files;
 
     if(files.length === 0){
       alert("Sube al menos una imagen");
       return;
     }
 
-    let urls = [];
+    const urls = [];
 
-    // 🔥 subir imágenes
-    for(let i=0; i<files.length; i++){
-      const file = files[i];
+    for(let i = 0; i < files.length; i++){
 
-      const storageRef = ref(storage, "productos/" + Date.now() + "_" + file.name);
+      const formDataImg = new FormData();
+      formDataImg.append("file", files[i]);
+      formDataImg.append("upload_preset", UPLOAD_PRESET);
 
-      await uploadBytes(storageRef, file);
+      const resCloud = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,{
+        method:"POST",
+        body:formDataImg
+      });
 
-      const url = await getDownloadURL(storageRef);
-      urls.push(url);
+      const dataCloud = await resCloud.json();
+
+      if(dataCloud.secure_url){
+        urls.push(dataCloud.secure_url);
+      }
     }
 
-    // 🔥 guardar en Firestore
-    await addDoc(collection(db, "productos"), {
-      Nombre: nombre.value,
-      Precio: precio.value,
-      PrecioAnterior: precioAnterior.value,
-      Categoria: categoria.value,
-      Subcategoria: subcategoria.value,
-      Descripcion: descripcion.value,
-      Imagen: urls[0] || "",
-      Imagen2: urls[1] || "",
-      Imagen3: urls[2] || "",
-      Imagen4: urls[3] || ""
+    const imagen = urls[0] || "";
+    const imagen2 = urls[1] || "";
+    const imagen3 = urls[2] || "";
+    const imagen4 = urls[3] || "";
+
+    const variantes = [];
+
+    const color = document.getElementById("color").value;
+    const talla = document.getElementById("talla").value;
+    const stock = document.getElementById("stock").value;
+
+    if(color || talla || stock){
+      variantes.push({
+        Color: color,
+        Talla: talla,
+        Stock: stock
+      });
+    }
+
+    const formData = new FormData();
+
+    formData.append("action", "create");
+    formData.append("Nombre", nombre);
+    formData.append("Precio", precio);
+    formData.append("PrecioAnterior", precioAnterior);
+    formData.append("Categoria", categoria);
+    formData.append("Subcategoria", subcategoria);
+    formData.append("Descripcion", descripcion);
+
+    formData.append("Imagen", imagen);
+    formData.append("Imagen2", imagen2);
+    formData.append("Imagen3", imagen3);
+    formData.append("Imagen4", imagen4);
+
+    formData.append("Variantes", JSON.stringify(variantes));
+
+    const res = await fetch(URL_SCRIPT,{
+      method:"POST",
+      body: formData
     });
 
-    alert("Producto guardado 🔥");
+    const text = await res.text();
 
-    // limpiar
-    nombre.value = "";
-    precio.value = "";
-    precioAnterior.value = "";
-    categoria.value = "";
-    subcategoria.value = "";
-    descripcion.value = "";
-    document.getElementById("imagenesFiles").value = "";
+    console.log(text);
 
-    cargarProductos();
+    alert("✅ Producto guardado correctamente");
+    limpiar();
 
-  }catch(e){
-    console.error("ERROR:", e);
-    alert("Error: " + e.message);
+  }catch(err){
+    console.error(err);
+    alert("❌ Error general");
+  }
+}
+// ===============================
+// 🧹 LIMPIAR
+// ===============================
+function limpiar(){
+  document.getElementById("nombre").value="";
+  document.getElementById("precio").value="";
+  document.getElementById("precioAnterior").value="";
+  document.getElementById("categoria").value="";
+  document.getElementById("subcategoria").value="";
+  document.getElementById("descripcion").value="";
+  document.getElementById("imagen").value="";
+
+  document.getElementById("color").value="";
+  document.getElementById("talla").value="";
+  document.getElementById("stock").value="";
+}
+
+// ===============================
+// ➕ GUARDAR SOLO VARIANTE
+// ===============================
+async function guardarVariante(){
+
+  const productoID = document.getElementById("productoID").value;
+
+  if(!productoID){
+    alert("Pon el ID del producto");
+    return;
   }
 
-}
+  try{
 
+    const color = document.getElementById("color").value;
+    const talla = document.getElementById("talla").value;
+    const stock = document.getElementById("stock").value;
 
-// 🔥 CARGAR PRODUCTOS
-async function cargarProductos(){
+    const form = new FormData();
 
-  const cont = document.getElementById("lista");
-  cont.innerHTML = "";
+    form.append("tipo", "variante");
+   
+    form.append("Color", color);
+    form.append("Talla", talla);
+    form.append("Stock", stock);
 
-  const snap = await getDocs(collection(db, "productos"));
-
-  snap.forEach(docu => {
-
-    const p = docu.data();
-
-    cont.innerHTML += `
-      <div class="card">
-        <img src="${p.Imagen}">
-        <b>${p.Nombre}</b><br>
-        $${p.Precio}<br>
-        <button data-id="${docu.id}" class="btnEliminar">Eliminar</button>
-      </div>
-    `;
-  });
-
-  // 🔥 eventos eliminar (forma correcta en módulos)
-  document.querySelectorAll(".btnEliminar").forEach(btn => {
-    btn.addEventListener("click", async () => {
-      const id = btn.getAttribute("data-id");
-      await deleteDoc(doc(db, "productos", id));
-      cargarProductos();
+    const res = await fetch(URL_SCRIPT,{
+      method:"POST",
+      body:form
     });
-  });
 
+    const text = await res.text();
+
+    console.log("Variante:", text);
+
+    alert("✅ Variante guardada");
+
+  }catch(err){
+    console.error(err);
+    alert("❌ Error variante");
+  }
+}
+const API = URL_SCRIPT;
+
+// ===============================
+// 📥 CARGAR PRODUCTOS
+// ===============================
+function cargarProductos(){
+
+  fetch(URL_SCRIPT)
+  .then(r => r.json())
+  .then(data => {
+
+    let html = "";
+
+    data.forEach(p => {
+
+      html += `
+        <div style="border:1px solid #ccc; padding:10px; margin:10px;">
+          <b>${p.ID}</b><br>
+          ${p.Nombre}<br>
+          💰 ${p.Precio}<br>
+
+          <img src="${p.Imagen}" width="80"><br>
+
+          <button onclick='abrirModal(${JSON.stringify(p)})'>Editar</button>
+        </div>
+      `;
+    });
+
+    document.getElementById("lista2").innerHTML = html;
+  });
 }
 
+function abrirModal(p){
 
-// 🔥 EVENTO BOTÓN
-document.getElementById("btnGuardar").addEventListener("click", guardarProducto);
+  window.editingID = p.ID;
+
+  document.getElementById("e_nombre").value = p.Nombre || "";
+  document.getElementById("e_precio").value = p.Precio || "";
+  document.getElementById("e_precioAnterior").value = p.PrecioAnterior || "";
+  document.getElementById("e_categoria").value = p.Categoria || "";
+  document.getElementById("e_subcategoria").value = p.Subcategoria || "";
+  document.getElementById("e_descripcion").value = p.Descripcion || "";
+
+  window.oldImages = {
+    Imagen: p.Imagen || "",
+    Imagen2: p.Imagen2 || "",
+    Imagen3: p.Imagen3 || "",
+    Imagen4: p.Imagen4 || ""
+  };
+
+  document.getElementById("modal").style.display = "flex";
+}
+// ===============================
+// ✏️ EDITAR
+// ===============================
+function editar(p){
+
+  document.getElementById("e_nombre").value = p.Nombre;
+  document.getElementById("e_precio").value = p.Precio;
+  document.getElementById("e_precioAnterior").value = p.PrecioAnterior;
+  document.getElementById("e_categoria").value = p.Categoria;
+  document.getElementById("e_subcategoria").value = p.Subcategoria;
+  document.getElementById("e_descripcion").value = p.Descripcion;
+
+  window.editingID = p.ID;
+
+  window.oldImages = {
+    Imagen: p.Imagen,
+    Imagen2: p.Imagen2,
+    Imagen3: p.Imagen3,
+    Imagen4: p.Imagen4
+  };
+
+  document.getElementById("modal").style.display = "flex";
+}
+function cerrarModal(){
+  document.getElementById("modal").style.display = "none";
+}
+
+// ===============================
+// 💾 GUARDAR UPDATE
+// ===============================
+async function actualizar(){
+
+  const files = document.getElementById("e_imagen").files;
+  let urls = [];
+
+  if(files.length > 0){
+
+    for(let i = 0; i < files.length; i++){
+
+      const formDataImg = new FormData();
+      formDataImg.append("file", files[i]);
+      formDataImg.append("upload_preset", UPLOAD_PRESET);
+
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,{
+        method:"POST",
+        body:formDataImg
+      });
+
+      const data = await res.json();
+      if(data.secure_url) urls.push(data.secure_url);
+    }
+  }
+
+  const form = new FormData();
+
+  form.append("action", "update");
+  form.append("ID", window.editingID);
+
+  form.append("Nombre", document.getElementById("e_nombre").value);
+  form.append("Precio", document.getElementById("e_precio").value);
+  form.append("PrecioAnterior", document.getElementById("e_precioAnterior").value);
+  form.append("Categoria", document.getElementById("e_categoria").value);
+  form.append("Subcategoria", document.getElementById("e_subcategoria").value);
+  form.append("Descripcion", document.getElementById("e_descripcion").value);
+
+  form.append("Imagen", urls[0] || window.oldImages.Imagen);
+  form.append("Imagen2", urls[1] || window.oldImages.Imagen2);
+  form.append("Imagen3", urls[2] || window.oldImages.Imagen3);
+  form.append("Imagen4", urls[3] || window.oldImages.Imagen4);
+
+  await fetch(URL_SCRIPT, { method:"POST", body: form });
+
+  alert("✅ Actualizado");
+
+  cerrarModal();
+  cargarProductos();
+}
+
+function mostrarLista(){
+  document.getElementById("pageCreate").style.display = "none";
+  document.getElementById("pageEdit").style.display = "block";
+  cargarProductos();
+}
+
+function volver(){
+  document.getElementById("pageCreate").style.display = "block";
+  document.getElementById("pageEdit").style.display = "none";
+}
+function goCreate(){
+  showPage("create");
+  history.pushState({page:"create"}, "", "#create");
+}
+
+function goList(){
+  showPage("list");
+  history.pushState({page:"list"}, "", "#list");
+}
+
+function goEdit(){
+  showPage("edit");
+  history.pushState({page:"edit"}, "", "#edit");
+}
+function showPage(page){
+
+  document.getElementById("pageCreate").style.display = "none";
+  document.getElementById("pageEdit").style.display = "none";
+  document.getElementById("modal").style.display = "none";
+
+  if(page === "create"){
+    document.getElementById("pageCreate").style.display = "block";
+  }
+
+  if(page === "list"){
+    document.getElementById("pageEdit").style.display = "block";
+    cargarProductos();
+  }
+
+  if(page === "edit"){
+    document.getElementById("modal").style.display = "flex";
+  }
+}
+window.onpopstate = function(event){
+
+  if(!event.state){
+    showPage("create");
+    return;
+  }
+
+  showPage(event.state.page);
+};
 
 
-// 🔥 INIT
-cargarProductos();
 
 </script>
 
