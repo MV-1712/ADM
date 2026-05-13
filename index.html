@@ -202,6 +202,13 @@ h2,h3{
 <input type="file" id="e_img2" accept="image/*">
 <input type="file" id="e_img3" accept="image/*">
 <input type="file" id="e_img4" accept="image/*">
+<h3>Variantes</h3>
+
+<div id="editVariantesContainer"></div>
+
+<button type="button" onclick="agregarVarianteEdit()">
+➕ Agregar variante
+</button>
 
     <button onclick="actualizar()">💾 Guardar cambios</button>
     <button onclick="cerrarModal()">❌ Cerrar</button>
@@ -311,29 +318,62 @@ function cargarProductos(){
     data.forEach(p => {
 
       html += `
-        <div style="border:1px solid #ccc; padding:10px; margin:10px;">
-          
-          <b>${p.Nombre}</b><br>
-          💰 ${p.Precio}<br>
-
-          <div style="
-display:flex;
-gap:5px;
-margin-top:5px;
-flex-wrap:wrap;
+<div style="
+border:1px solid #ccc;
+padding:15px;
+margin:15px 0;
+border-radius:10px;
+background:white;
 ">
-            <img src="${p.Imagen || ''}" width="60">
-            <img src="${p.Imagen2 || ''}" width="60">
-            <img src="${p.Imagen3 || ''}" width="60">
-            <img src="${p.Imagen4 || ''}" width="60">
-          </div>
 
-          <button onclick='abrirModal(${JSON.stringify(p)})'>
-            Editar
-          </button>
+  <b>${p.Nombre}</b><br>
+  💰 ${p.Precio}<br><br>
 
-        </div>
-      `;
+  <div style="
+  display:flex;
+  gap:5px;
+  flex-wrap:wrap;
+  margin-bottom:10px;
+  ">
+  
+    <img src="${p.Imagen || ''}" width="70">
+    <img src="${p.Imagen2 || ''}" width="70">
+    <img src="${p.Imagen3 || ''}" width="70">
+    <img src="${p.Imagen4 || ''}" width="70">
+
+  </div>
+
+  <div style="
+  display:flex;
+  gap:5px;
+  ">
+
+    <button
+      style="
+      width:80%;
+      background:black;
+      color:white;
+      "
+      onclick='abrirModal(${JSON.stringify(p)})'
+    >
+      ✏️ Editar
+    </button>
+
+    <button
+      style="
+      width:20%;
+      background:red;
+      color:white;
+      "
+      onclick="eliminarProducto('${p.ID}')"
+    >
+      ❌ Eliminar
+    </button>
+
+  </div>
+
+</div>
+`;
     });
 
     document.getElementById("lista2").innerHTML = html;
@@ -360,7 +400,29 @@ function abrirModal(p){
   document.getElementById("prev2").src = p.Imagen2 || "";
   document.getElementById("prev3").src = p.Imagen3 || "";
   document.getElementById("prev4").src = p.Imagen4 || "";
+document.getElementById("editVariantesContainer").innerHTML = "";
 
+if(p.Variantes){
+
+  let vars = [];
+
+  try{
+    vars = JSON.parse(p.Variantes);
+  }catch(e){
+    vars = [];
+  }
+
+  vars.forEach(v => {
+
+    agregarVarianteEdit(
+      v.Color || "",
+      v.Talla || "",
+      v.Stock || ""
+    );
+
+  });
+
+}
   document.getElementById("modal").style.display = "flex";
   window.oldImages = {
   Imagen: p.Imagen || "",
@@ -403,7 +465,7 @@ async function actualizar(){
   form.append("Imagen4", img4 || window.oldImages.Imagen4);
 const variantes = [];
 
-document.querySelectorAll(".variante").forEach(v => {
+document.querySelectorAll("#editVariantesContainer .variante").forEach(v => {
 
   variantes.push({
     Color: v.querySelector(".color").value,
@@ -423,6 +485,29 @@ form.append("Variantes", JSON.stringify(variantes));
 
   alert("✅ Actualizado");
   cerrarModal();
+  cargarProductos();
+}
+// ===============================
+// ❌ ELIMINAR PRODUCTO
+// ===============================
+async function eliminarProducto(id){
+
+  const ok = confirm("¿Seguro que deseas eliminar este producto?");
+
+  if(!ok) return;
+
+  const form = new FormData();
+
+  form.append("action", "delete");
+  form.append("ID", id);
+
+  await fetch(URL_SCRIPT,{
+    method:"POST",
+    body:form
+  });
+
+  alert("🗑️ Producto eliminado");
+
   cargarProductos();
 }
 
@@ -454,9 +539,37 @@ function agregarVariante(){
   document.getElementById("variantesContainer").innerHTML += `
   
     <div class="variante">
+
       <input class="color" placeholder="Color">
+
       <input class="talla" placeholder="Talla">
+
       <input class="stock" placeholder="Stock">
+
+      <button type="button" onclick="this.parentElement.remove()">
+      ❌ Eliminar
+      </button>
+
+    </div>
+
+  `;
+}
+function agregarVarianteEdit(color="", talla="", stock=""){
+
+  document.getElementById("editVariantesContainer").innerHTML += `
+  
+    <div class="variante">
+
+      <input class="color" placeholder="Color" value="${color}">
+      
+      <input class="talla" placeholder="Talla" value="${talla}">
+      
+      <input class="stock" placeholder="Stock" value="${stock}">
+
+      <button type="button" onclick="this.parentElement.remove()">
+      ❌ Eliminar
+      </button>
+
     </div>
 
   `;
