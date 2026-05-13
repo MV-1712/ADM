@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Admin VISIONARY</title>
 
 <style>
@@ -9,47 +10,67 @@ body{
   font-family:Arial;
   background:#f4f4f4;
   margin:0;
-  padding:20px;
+  padding:15px;
 }
 
 .container{
-  max-width:600px;
+  max-width:700px;
   margin:auto;
   background:white;
   padding:20px;
-  border-radius:10px;
-  width:95%;
+  border-radius:12px;
+  width:100%;
+  box-sizing:border-box;
   box-shadow:0 4px 15px rgba(0,0,0,0.1);
 }
 
-input, textarea{
-  width:100%;
-  padding:10px;
-  margin:5px 0;
-  font-size:16px;
-  box-sizing:border-box;
-}
-
+input,
+textarea,
 button{
   width:100%;
   padding:12px;
+  margin:6px 0;
+  font-size:16px;
+  box-sizing:border-box;
+  border-radius:8px;
+}
+
+textarea{
+  min-height:100px;
+  resize:vertical;
+}
+
+button{
   background:black;
   color:white;
   border:none;
   cursor:pointer;
-  margin-top:10px;
-  font-size:16px;
+  transition:0.2s;
+}
+
+button:hover{
+  opacity:0.9;
 }
 
 img{
   max-width:100%;
+  border-radius:8px;
 }
 
 h2,h3{
   text-align:center;
 }
 
-/* MODAL */
+/* variantes */
+.variante{
+  border:1px solid #ddd;
+  padding:10px;
+  border-radius:10px;
+  margin-bottom:10px;
+  background:#fafafa;
+}
+
+/* modal */
 #modal{
   display:none;
   position:fixed;
@@ -61,16 +82,41 @@ h2,h3{
   justify-content:center;
   align-items:flex-start;
   overflow-y:auto;
-  padding:20px 0;
+  padding:20px 10px;
+  box-sizing:border-box;
+  z-index:999;
 }
 
 .modal-content{
   background:white;
   padding:20px;
-  width:90%;
-  max-width:500px;
-  border-radius:10px;
+  width:100%;
+  max-width:600px;
+  border-radius:12px;
   margin:auto;
+  box-sizing:border-box;
+}
+
+/* responsive */
+@media(max-width:600px){
+
+  body{
+    padding:10px;
+  }
+
+  .container{
+    padding:15px;
+    border-radius:10px;
+  }
+
+  button{
+    font-size:15px;
+  }
+
+  h2{
+    font-size:22px;
+  }
+
 }
 </style>
 </head>
@@ -94,24 +140,34 @@ h2,h3{
 <h3>🖼 Imágenes</h3>
 
 <label>Foto 1</label>
-<input type="file" id="c_img1">
+<input type="file" id="c_img1" accept="image/*">
 
 <label>Foto 2</label>
-<input type="file" id="c_img2">
+<input type="file" id="c_img2" accept="image/*">
 
 <label>Foto 3</label>
-<input type="file" id="c_img3">
+<input type="file" id="c_img3" accept="image/*">
 
 <label>Foto 4</label>
-<input type="file" id="c_img4">
+<input type="file" id="c_img4" accept="image/*">
 
 <h3>Variantes</h3>
-<input id="color" placeholder="Color">
-<input id="talla" placeholder="Talla">
-<input id="stock" placeholder="Stock">
+
+<div id="variantesContainer">
+
+  <div class="variante">
+    <input class="color" placeholder="Color">
+    <input class="talla" placeholder="Talla">
+    <input class="stock" placeholder="Stock">
+  </div>
+
+</div>
 
 <button onclick="guardar()">Guardar producto</button>
 
+<button type="button" onclick="agregarVariante()">
+➕ Agregar variante
+</button>
 </div>
 
 <!-- 🔵 LISTA -->
@@ -142,10 +198,10 @@ h2,h3{
 
     <h3>Nuevas imágenes</h3>
 
-    <input type="file" id="e_img1">
-    <input type="file" id="e_img2">
-    <input type="file" id="e_img3">
-    <input type="file" id="e_img4">
+    <input type="file" id="e_img1" accept="image/*">
+<input type="file" id="e_img2" accept="image/*">
+<input type="file" id="e_img3" accept="image/*">
+<input type="file" id="e_img4" accept="image/*">
 
     <button onclick="actualizar()">💾 Guardar cambios</button>
     <button onclick="cerrarModal()">❌ Cerrar</button>
@@ -219,7 +275,20 @@ async function guardar(){
   form.append("Imagen2", img2);
   form.append("Imagen3", img3);
   form.append("Imagen4", img4);
+const variantes = [];
 
+document.querySelectorAll(".variante").forEach(v => {
+
+  variantes.push({
+    Color: v.querySelector(".color").value,
+    Talla: v.querySelector(".talla").value,
+    Stock: v.querySelector(".stock").value
+  });
+
+});
+
+
+form.append("Variantes", JSON.stringify(variantes));
   await fetch(URL_SCRIPT, {
     method: "POST",
     body: form
@@ -247,7 +316,12 @@ function cargarProductos(){
           <b>${p.Nombre}</b><br>
           💰 ${p.Precio}<br>
 
-          <div style="display:flex; gap:5px; margin-top:5px;">
+          <div style="
+display:flex;
+gap:5px;
+margin-top:5px;
+flex-wrap:wrap;
+">
             <img src="${p.Imagen || ''}" width="60">
             <img src="${p.Imagen2 || ''}" width="60">
             <img src="${p.Imagen3 || ''}" width="60">
@@ -327,6 +401,20 @@ async function actualizar(){
   form.append("Imagen2", img2 || window.oldImages.Imagen2);
   form.append("Imagen3", img3 || window.oldImages.Imagen3);
   form.append("Imagen4", img4 || window.oldImages.Imagen4);
+const variantes = [];
+
+document.querySelectorAll(".variante").forEach(v => {
+
+  variantes.push({
+    Color: v.querySelector(".color").value,
+    Talla: v.querySelector(".talla").value,
+    Stock: v.querySelector(".stock").value
+  });
+
+});
+
+
+form.append("Variantes", JSON.stringify(variantes));
 
   await fetch(URL_SCRIPT, {
     method: "POST",
@@ -348,11 +436,31 @@ function limpiar(){
   document.getElementById("categoria").value = "";
   document.getElementById("subcategoria").value = "";
   document.getElementById("descripcion").value = "";
+  document.getElementById("variantesContainer").innerHTML = `
+  <div class="variante">
+    <input class="color" placeholder="Color">
+    <input class="talla" placeholder="Talla">
+    <input class="stock" placeholder="Stock">
+  </div>
+`;
 }
 
 // ===============================
 // UI
 // ===============================
+
+function agregarVariante(){
+
+  document.getElementById("variantesContainer").innerHTML += `
+  
+    <div class="variante">
+      <input class="color" placeholder="Color">
+      <input class="talla" placeholder="Talla">
+      <input class="stock" placeholder="Stock">
+    </div>
+
+  `;
+}
 function mostrarLista(){
   document.getElementById("pageCreate").style.display = "none";
   document.getElementById("pageEdit").style.display = "block";
